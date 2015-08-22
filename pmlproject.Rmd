@@ -7,9 +7,10 @@ output: html_document
 
 
   
-# Re-Analysis of Weight Lifting Data to Determine Quality of Exercise
+# Using Body Sensors to determine if Weight Lifting is Being Done Properly - A Reanalysis of data
 
-The data is from a project that was done to try to determine if a person was using proper weight lifting technique using only body sensing measurements.  The data was collected and a model created by comparing the collected data to the "correct" answer as determined by an expert weightlifter.  Then the model was used to try to predict if the individual was lifting correctly or making an error of technique.  I am working through a replication of this analysis in this project.
+This data is from a project that was done and reported online which used body sensors to try to determine if a person was using proper weight lifting technique.  The source is cited at the bottom of this paper.  The dataset from that project is being re-used for this course project.  
+For this project, I downloaded the data from the coursera website, loaded it into R, evaluated and cleaned the data and then created a model using the random forest method.  Before creating the model I split the dataset into a training and a test set and used the test set to cross validate and determine out of sample error.  I then used the model to predict the exercise class on 20 unknown data samples.
 
 ## Strategy (from lectures)
 Prediction study design:
@@ -17,10 +18,10 @@ Prediction study design:
 * on training set pick features using cross validation
 * on training set pick prediction function using cross validation
 * if no validation apply 1 x to the test set
-* if validation applyt to test set and refine, apply 1x to validation
+* if validation apply to test set and refine, apply 1x to validation
 
 ## Data preparation 
-The data was downloaded from the coursera website.  It consists of 19,622 observations of 159 variables.  The final variable, "classe" is a factor labeled A,B,C,D or E.  This is represents the the properly done exercise (A) or one of 4 common errors (B-E) and it is the answer we are trying to predict with the rest of the variables.  Many of the variables are blank.
+The data was downloaded from the coursera website.  It consists of 19,622 observations of 159 variables.  The final variable, "classe" is a factor labeled A,B,C,D or E.  This is the "correct" classification of the exercise as determined by the weight lifting instructor.  It represents either the properly done properly (A) or one of 4 common errors (B-E) and it is the answer we are trying to predict with the rest of the variables.  The rest of the variables consist of the output from the sensors worn on the subjects body, as well as some summary columns.  Many of the variables are blank in the dataset.
 
 The first step was to clean the data.  This was done by removing the variables that are NA or blank or that represent times or identifiers.  I did this by using visual inspection of the table and then manually removing columns in a series of assignemnt statements  (using grepl).  The result was a dataset with 53 variables.
 
@@ -51,7 +52,7 @@ pml2 <- pml2[, nostart]
 ```
 
 ## Creating the model
-I then took a small subset of the data (1%) to test multiple different methods within the caret package to see what worked.  I settled on the random forest method because it ran, giveing reasonable answers with reasonable accuracy in a reasonable period of time.  I then re-created the training data set using createDataPartition splitting the data into 60% training and 40% testing.  I then ran the analysis:
+I then took a small subset of the data (1%) to test multiple different methods within the caret package to see what worked.  I settled on the random forest method because it ran, giving reasonable answers with reasonable accuracy in a reasonable period of time.  I then created the training data set using createDataPartition splitting the data into 60% training and 40% testing.  I then ran the analysis:
 
 This took considerably longer.  
 ```{r}
@@ -113,6 +114,7 @@ From the training data, the OOB estimate of error rate is 0.84%.  To measure the
 
 ```{r}
 sum(predict(fitpml, pmltest) == pmltest$classe)/length(pmltest$classe)
+[1] 0.9878919
 ```
 This gives an out of sample accuracy of 98.8%, or an out of sample error rate of 1.2% (which is a little worse than predicted from the training data).
 
@@ -156,3 +158,9 @@ predict(fitpml, pml3)
 
 ## Conclusion
 The data was cleaned and then used to create a model using random forest.  With this model, I was able to make predictions with an out of sample error rate of 1.2%.  I was able to use this model to make predictions for the unknown exercise types for the class.
+
+
+Citation of original source:
+Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. 
+
+Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3jV4FWDa5
