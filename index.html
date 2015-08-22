@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Pml : practical machine learning">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Pml</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/lesterst/pml">View on GitHub</a>
+
+          <h1 id="project_title">Pml</h1>
+          <h2 id="project_tagline">practical machine learning</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/lesterst/pml/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/lesterst/pml/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <hr>
+
+<p>title: "pmlproject"
+author: "S Lester"
+date: "August 21, 2015"</p>
+
+<h2>
+<a id="output-html_document" class="anchor" href="#output-html_document" aria-hidden="true"><span class="octicon octicon-link"></span></a>output: html_document</h2>
+
+<h1>
+<a id="using-body-sensors-to-determine-if-weight-lifting-is-being-done-properly---a-reanalysis-of-data" class="anchor" href="#using-body-sensors-to-determine-if-weight-lifting-is-being-done-properly---a-reanalysis-of-data" aria-hidden="true"><span class="octicon octicon-link"></span></a>Using Body Sensors to determine if Weight Lifting is Being Done Properly - A Reanalysis of data</h1>
+
+<p>This data is from a project that was done and reported online which used body sensors to try to determine if a person was using proper weight lifting technique.  The source is cited at the bottom of this paper.  The dataset from that project is being re-used for this course project.<br>
+For this project, I downloaded the data from the coursera website, loaded it into R, evaluated and cleaned the data and then created a model using the random forest method.  Before creating the model I split the dataset into a training and a test set and used the test set to cross validate and determine out of sample error.  I then used the model to predict the exercise class on 20 unknown data samples.</p>
+
+<h2>
+<a id="strategy-from-lectures" class="anchor" href="#strategy-from-lectures" aria-hidden="true"><span class="octicon octicon-link"></span></a>Strategy (from lectures)</h2>
+
+<p>Prediction study design:</p>
+
+<ul>
+<li>Split data into training, testing, validation</li>
+<li>on training set pick features using cross validation</li>
+<li>on training set pick prediction function using cross validation</li>
+<li>if no validation apply 1 x to the test set</li>
+<li>if validation apply to test set and refine, apply 1x to validation</li>
+</ul>
+
+<h2>
+<a id="data-preparation" class="anchor" href="#data-preparation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Data preparation</h2>
+
+<p>The data was downloaded from the coursera website.  It consists of 19,622 observations of 159 variables.  The final variable, "classe" is a factor labeled A,B,C,D or E.  This is the "correct" classification of the exercise as determined by the weight lifting instructor.  It represents either the properly done properly (A) or one of 4 common errors (B-E) and it is the answer we are trying to predict with the rest of the variables.  The rest of the variables consist of the output from the sensors worn on the subjects body, as well as some summary columns.  Many of the variables are blank in the dataset.</p>
+
+<p>The first step was to clean the data.  This was done by removing the variables that are NA or blank or that represent times or identifiers.  I did this by using visual inspection of the table and then manually removing columns in a series of assignemnt statements  (using grepl).  The result was a dataset with 53 variables.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-smi">pml</span> <span class="pl-k">&lt;-</span> read.csv(<span class="pl-s"><span class="pl-pds">"</span>pml-training.csv<span class="pl-pds">"</span></span>)
+
+<span class="pl-smi">nafalse</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>is.na(<span class="pl-smi">pml</span>[<span class="pl-c1">1</span>,])
+<span class="pl-smi">pml2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml</span>[,names(<span class="pl-smi">pml</span>)[<span class="pl-smi">nafalse</span>]]
+
+<span class="pl-smi">nokurt</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>kurtosis<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml2</span>))
+<span class="pl-smi">pml2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml2</span>[,names(<span class="pl-smi">pml2</span>)[<span class="pl-smi">nokurt</span>]]
+
+<span class="pl-smi">noskew</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>skewness<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml2</span>))
+<span class="pl-smi">pml2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml2</span>[,names(<span class="pl-smi">pml2</span>)[<span class="pl-smi">noskew</span>]]
+
+<span class="pl-smi">nomin</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>min_yaw<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml2</span>))
+<span class="pl-smi">pml2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml2</span>[,names(<span class="pl-smi">pml2</span>)[<span class="pl-smi">nomin</span>]]
+
+<span class="pl-smi">nomax</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>max_yaw<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml2</span>))
+<span class="pl-smi">pml2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml2</span>[,names(<span class="pl-smi">pml2</span>)[<span class="pl-smi">nomax</span>]]
+
+<span class="pl-smi">noamp</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>amplitude_yaw<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml2</span>))
+<span class="pl-smi">pml2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml2</span>[,names(<span class="pl-smi">pml2</span>)[<span class="pl-smi">noamp</span>]]
+
+<span class="pl-smi">nostart</span> <span class="pl-k">&lt;-</span> names(<span class="pl-smi">pml2</span>)[<span class="pl-k">-</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">7</span>)]
+<span class="pl-smi">pml2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml2</span>[, <span class="pl-smi">nostart</span>]
+</pre></div>
+
+<h2>
+<a id="creating-the-model" class="anchor" href="#creating-the-model" aria-hidden="true"><span class="octicon octicon-link"></span></a>Creating the model</h2>
+
+<p>I then took a small subset of the data (1%) to test multiple different methods within the caret package to see what worked.  I settled on the random forest method because it ran, giving reasonable answers with reasonable accuracy in a reasonable period of time.  I then created the training data set using createDataPartition splitting the data into 60% training and 40% testing.  I then ran the analysis:</p>
+
+<p>This took considerably longer.  </p>
+
+<div class="highlight highlight-r"><pre>
+library(<span class="pl-smi">caret</span>)
+
+<span class="pl-smi">pmlsample</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-smi">pml2</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-v">p</span> <span class="pl-k">=</span> <span class="pl-c1">0.60</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">pmltrain</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml2</span>[<span class="pl-smi">pmlsample</span>,]
+<span class="pl-smi">pmltest</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml2</span>[<span class="pl-k">-</span><span class="pl-smi">pmlsample</span>,]
+
+<span class="pl-smi">fitpml</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">classe</span> <span class="pl-k">~</span> ., <span class="pl-v">method</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>rf<span class="pl-pds">"</span></span>, <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">pmltrain</span>)</pre></div>
+
+<p>The results were as follows:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-smi">Random</span> <span class="pl-smi">Forest</span> 
+
+<span class="pl-c1">11776</span> <span class="pl-smi">samples</span>
+   <span class="pl-c1">52</span> <span class="pl-smi">predictor</span>
+    <span class="pl-c1">5</span> <span class="pl-smi">classes</span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>A<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>B<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>C<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>D<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>E<span class="pl-pds">'</span></span> 
+
+<span class="pl-smi">No</span> <span class="pl-smi">pre</span><span class="pl-k">-</span><span class="pl-smi">processing</span>
+<span class="pl-smi">Resampling</span><span class="pl-k">:</span> Bootstrapped (<span class="pl-c1">25</span> <span class="pl-smi">reps</span>) 
+<span class="pl-smi">Summary</span> <span class="pl-smi">of</span> <span class="pl-smi">sample</span> <span class="pl-smi">sizes</span><span class="pl-k">:</span> <span class="pl-c1">11776</span>, <span class="pl-c1">11776</span>, <span class="pl-c1">11776</span>, <span class="pl-c1">11776</span>, <span class="pl-c1">11776</span>, <span class="pl-c1">11776</span>, <span class="pl-k">...</span> 
+<span class="pl-smi">Resampling</span> <span class="pl-smi">results</span> <span class="pl-smi">across</span> <span class="pl-smi">tuning</span> <span class="pl-smi">parameters</span><span class="pl-k">:</span>
+
+  <span class="pl-smi">mtry</span>  <span class="pl-smi">Accuracy</span>   <span class="pl-smi">Kappa</span>      <span class="pl-smi">Accuracy</span> <span class="pl-smi">SD</span>  <span class="pl-smi">Kappa</span> <span class="pl-smi">SD</span>   
+   <span class="pl-c1">2</span>    <span class="pl-c1">0.9863724</span>  <span class="pl-c1">0.9827557</span>  <span class="pl-c1">0.002188335</span>  <span class="pl-c1">0.002764943</span>
+  <span class="pl-c1">27</span>    <span class="pl-c1">0.9873154</span>  <span class="pl-c1">0.9839493</span>  <span class="pl-c1">0.002280896</span>  <span class="pl-c1">0.002884525</span>
+  <span class="pl-c1">52</span>    <span class="pl-c1">0.9786747</span>  <span class="pl-c1">0.9730150</span>  <span class="pl-c1">0.003671623</span>  <span class="pl-c1">0.004649611</span>
+
+<span class="pl-smi">Accuracy</span> <span class="pl-smi">was</span> <span class="pl-smi">used</span> <span class="pl-smi">to</span> <span class="pl-smi">select</span> <span class="pl-smi">the</span> <span class="pl-smi">optimal</span> <span class="pl-smi">model</span> <span class="pl-smi">using</span>  <span class="pl-smi">the</span> <span class="pl-smi">largest</span> <span class="pl-smi">value</span>.
+<span class="pl-smi">The</span> <span class="pl-smi">final</span> <span class="pl-smi">value</span> <span class="pl-smi">used</span> <span class="pl-k">for</span> <span class="pl-smi">the</span> <span class="pl-smi">model</span> <span class="pl-smi">was</span> <span class="pl-v">mtry</span> <span class="pl-k">=</span> <span class="pl-c1">27</span>. 
+</pre></div>
+
+<p>The confusion matrix for the final model is as follows:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-smi">Call</span><span class="pl-k">:</span>
+ randomForest(<span class="pl-v">x</span> <span class="pl-k">=</span> <span class="pl-smi">x</span>, <span class="pl-v">y</span> <span class="pl-k">=</span> <span class="pl-smi">y</span>, <span class="pl-v">mtry</span> <span class="pl-k">=</span> <span class="pl-smi">param</span><span class="pl-k">$</span><span class="pl-smi">mtry</span>) 
+               <span class="pl-smi">Type</span> <span class="pl-smi">of</span> <span class="pl-smi">random</span> <span class="pl-smi">forest</span><span class="pl-k">:</span> <span class="pl-smi">classification</span>
+                     <span class="pl-smi">Number</span> <span class="pl-smi">of</span> <span class="pl-smi">trees</span><span class="pl-k">:</span> <span class="pl-c1">500</span>
+<span class="pl-smi">No</span>. <span class="pl-smi">of</span> <span class="pl-smi">variables</span> <span class="pl-smi">tried</span> <span class="pl-smi">at</span> <span class="pl-smi">each</span> <span class="pl-smi">split</span><span class="pl-k">:</span> <span class="pl-c1">27</span>
+
+        <span class="pl-smi">OOB</span> <span class="pl-smi">estimate</span> <span class="pl-smi">of</span>  <span class="pl-smi">error</span> <span class="pl-smi">rate</span><span class="pl-k">:</span> <span class="pl-c1">0.84</span>%
+<span class="pl-smi">Confusion</span> <span class="pl-smi">matrix</span><span class="pl-k">:</span>
+     <span class="pl-smi">A</span>    <span class="pl-smi">B</span>    <span class="pl-smi">C</span>    <span class="pl-smi">D</span>    <span class="pl-smi">E</span>  <span class="pl-smi">class.error</span>
+<span class="pl-smi">A</span> <span class="pl-c1">3345</span>    <span class="pl-c1">2</span>    <span class="pl-c1">1</span>    <span class="pl-c1">0</span>    <span class="pl-c1">0</span> <span class="pl-c1">0.0008960573</span>
+<span class="pl-smi">B</span>   <span class="pl-c1">18</span> <span class="pl-c1">2251</span>   <span class="pl-c1">10</span>    <span class="pl-c1">0</span>    <span class="pl-c1">0</span> <span class="pl-c1">0.0122860904</span>
+<span class="pl-smi">C</span>    <span class="pl-c1">0</span>   <span class="pl-c1">16</span> <span class="pl-c1">2029</span>    <span class="pl-c1">9</span>    <span class="pl-c1">0</span> <span class="pl-c1">0.0121713729</span>
+<span class="pl-smi">D</span>    <span class="pl-c1">0</span>    <span class="pl-c1">2</span>   <span class="pl-c1">30</span> <span class="pl-c1">1897</span>    <span class="pl-c1">1</span> <span class="pl-c1">0.0170984456</span>
+<span class="pl-smi">E</span>    <span class="pl-c1">0</span>    <span class="pl-c1">2</span>    <span class="pl-c1">5</span>    <span class="pl-c1">3</span> <span class="pl-c1">2155</span> <span class="pl-c1">0.0046189376</span></pre></div>
+
+<h2>
+<a id="estimating-the-out-of-sample-error-rate" class="anchor" href="#estimating-the-out-of-sample-error-rate" aria-hidden="true"><span class="octicon octicon-link"></span></a>Estimating the out of sample error rate</h2>
+
+<p>From the training data, the OOB estimate of error rate is 0.84%.  To measure the out of sample error rate using cross validation, I used the predict function to apply my model to the other 40% of the data.  I compared this predicted "classe"" to the actual "classe"" and converted to a percentage.</p>
+
+<div class="highlight highlight-r"><pre>sum(predict(<span class="pl-smi">fitpml</span>, <span class="pl-smi">pmltest</span>) <span class="pl-k">==</span> <span class="pl-smi">pmltest</span><span class="pl-k">$</span><span class="pl-smi">classe</span>)<span class="pl-k">/</span>length(<span class="pl-smi">pmltest</span><span class="pl-k">$</span><span class="pl-smi">classe</span>)
+[<span class="pl-c1">1</span>] <span class="pl-c1">0.9878919</span></pre></div>
+
+<p>This gives an out of sample accuracy of 98.8%, or an out of sample error rate of 1.2% (which is a little worse than predicted from the training data).</p>
+
+<h2>
+<a id="predicting-the-unknowns" class="anchor" href="#predicting-the-unknowns" aria-hidden="true"><span class="octicon octicon-link"></span></a>Predicting the unknowns</h2>
+
+<p>Finally we were asked to predict the classe for 20 unknowns.  This data was loaded and the same data cleaning strategy was applied.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-smi">pmltesting</span> <span class="pl-k">&lt;-</span> read.csv(<span class="pl-s"><span class="pl-pds">"</span>pml-testing.csv<span class="pl-pds">"</span></span>)
+
+<span class="pl-smi">nafalse</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>is.na(<span class="pl-smi">pmltesting</span>[<span class="pl-c1">1</span>,])
+<span class="pl-smi">pml3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pmltesting</span>[,names(<span class="pl-smi">pmltesting</span>)[<span class="pl-smi">nafalse</span>]]
+
+<span class="pl-smi">nokurt</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>kurtosis<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml3</span>))
+<span class="pl-smi">pml3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml3</span>[,names(<span class="pl-smi">pml3</span>)[<span class="pl-smi">nokurt</span>]]
+
+<span class="pl-smi">noskew</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>skewness<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml3</span>))
+<span class="pl-smi">pml3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml3</span>[,names(<span class="pl-smi">pml3</span>)[<span class="pl-smi">noskew</span>]]
+
+<span class="pl-smi">nomin</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>min_yaw<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml3</span>))
+<span class="pl-smi">pml3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml3</span>[,names(<span class="pl-smi">pml3</span>)[<span class="pl-smi">nomin</span>]]
+
+<span class="pl-smi">nomax</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>max_yaw<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml3</span>))
+<span class="pl-smi">pml3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml3</span>[,names(<span class="pl-smi">pml3</span>)[<span class="pl-smi">nomax</span>]]
+
+<span class="pl-smi">noamp</span> <span class="pl-k">&lt;-</span> <span class="pl-k">!</span>grepl(<span class="pl-s"><span class="pl-pds">"</span>amplitude_yaw<span class="pl-pds">"</span></span>, names(<span class="pl-smi">pml3</span>))
+<span class="pl-smi">pml3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml3</span>[,names(<span class="pl-smi">pml3</span>)[<span class="pl-smi">noamp</span>]]
+
+<span class="pl-smi">nostart</span> <span class="pl-k">&lt;-</span> names(<span class="pl-smi">pml3</span>)[<span class="pl-k">-</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">7</span>)]
+<span class="pl-smi">pml3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml3</span>[, <span class="pl-smi">nostart</span>]</pre></div>
+
+<p>The previous model was then used to predict the classe for each member of this cleaned testing dataset:</p>
+
+<div class="highlight highlight-r"><pre>predict(<span class="pl-smi">fitpml</span>, <span class="pl-smi">pml3</span>)
+
+[<span class="pl-c1">1</span>] <span class="pl-smi">B</span> <span class="pl-smi">A</span> <span class="pl-smi">B</span> <span class="pl-smi">A</span> <span class="pl-smi">A</span> <span class="pl-smi">E</span> <span class="pl-smi">D</span> <span class="pl-smi">B</span> <span class="pl-smi">A</span> <span class="pl-smi">A</span> <span class="pl-smi">B</span> <span class="pl-smi">C</span> <span class="pl-smi">B</span> <span class="pl-smi">A</span> <span class="pl-smi">E</span> <span class="pl-smi">E</span> <span class="pl-smi">A</span> <span class="pl-smi">B</span> <span class="pl-smi">B</span> <span class="pl-smi">B</span></pre></div>
+
+<h2>
+<a id="conclusion" class="anchor" href="#conclusion" aria-hidden="true"><span class="octicon octicon-link"></span></a>Conclusion</h2>
+
+<p>The data was cleaned and then used to create a model using random forest.  With this model, I was able to make predictions with an out of sample error rate of 1.2%.  I was able to use this model to make predictions for the unknown exercise types for the class.</p>
+
+<p>Citation of original source:
+Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. </p>
+
+<p>Read more: <a href="http://groupware.les.inf.puc-rio.br/har#ixzz3jV4FWDa5">http://groupware.les.inf.puc-rio.br/har#ixzz3jV4FWDa5</a></p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Pml maintained by <a href="https://github.com/lesterst">lesterst</a></p>
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
