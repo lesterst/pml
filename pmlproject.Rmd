@@ -5,11 +5,16 @@ date: "August 21, 2015"
 output: html_document
 ---
 
-Prediction sutdy design
+Prediction study design:
+
   Split data into training, testing, validation
+  
   on training set pick features using cross validation
+  
   on training set pick prediction function using cross validation
+  
   if no validation apply 1 x to the test set
+  
   if validation applyt to test set and refine, apply 1x to validation
   
   
@@ -50,9 +55,7 @@ pml2 <- pml2[, nostart]
 
 ```
 
-I then took a small subset of the data (1%) to test multiple different methods within the caret package to see what worked.  I settled on the random forest method because it ran, giveing reasonable answers with reasonable accuracy in a reasonable period of time.  I then re-created the training data set using createDataPartition splitting the data into 60% training and 40% testing.  I then ran the analysis using:
-
-fitpml <- train(classe ~ ., method = "rf", data=pmltrain)
+I then took a small subset of the data (1%) to test multiple different methods within the caret package to see what worked.  I settled on the random forest method because it ran, giveing reasonable answers with reasonable accuracy in a reasonable period of time.  I then re-created the training data set using createDataPartition splitting the data into 60% training and 40% testing.  I then ran the analysis:
 
 This took considerably longer.  
 ```{r}
@@ -65,6 +68,9 @@ pmltest <- pml2[-pmlsample,]
 
 fitpml <- train(classe ~ ., method = "rf", data=pmltrain)
 ```
+
+The results were as follows:
+```{r}
 Random Forest 
 
 11776 samples
@@ -84,8 +90,12 @@ Resampling results across tuning parameters:
 Accuracy was used to select the optimal model using  the largest value.
 The final value used for the model was mtry = 27. 
 
+```
+
+
 The confusion matrix for the final model is as follows:
 
+```{r}
 Call:
  randomForest(x = x, y = y, mtry = param$mtry) 
                Type of random forest: classification
@@ -100,6 +110,9 @@ B   18 2251   10    0    0 0.0122860904
 C    0   16 2029    9    0 0.0121713729
 D    0    2   30 1897    1 0.0170984456
 E    0    2    5    3 2155 0.0046189376
+```
+
+
 
 ## Estimate the out of sample error rate
 
@@ -114,6 +127,7 @@ This gives an out of sample accuracy of 98.8%, or an out of sample error rate of
 
 Finally we were asked to predict the classe for 20 unknowns.  This data was loaded and the same data cleaning strategy was applied.
 
+```{r}
 pmltesting <- read.csv("pml-testing.csv")
 
 nafalse <- !is.na(pmltesting[1,])
@@ -136,16 +150,17 @@ pml3 <- pml3[,names(pml3)[noamp]]
 
 nostart <- names(pml3)[-(1:7)]
 pml3 <- pml3[, nostart]
+```
 
-## Predict the 20 unknown exercise types for the project
 
-The previous model was then used to predict the classe:
+The previous model was then used to predict the classe for each member of this cleaned testing dataset:
 
+```{r}
 predict(fitpml, pml3)
 
-with the following predictions obtained:
-
 [1] B A B A A E D B A A B C B A E E A B B B
+```
+
 
 ## Conclusion
 The data was cleaned and then used to create a model using random forest.  With this model, I was able to make predictions with an out of sample error rate of 1.2%.  I was able to use this model to make predictions for the unknown exercise types for the class.
