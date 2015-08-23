@@ -1,6 +1,8 @@
 # pml
 practical machine learning
 
+The markdown version of this paper is shown above and is called pmlproject.Rmd
+
 The compiled version of this paper is at:
 http://lesterst.github.io/pml
 
